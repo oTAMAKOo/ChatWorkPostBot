@@ -63,8 +63,6 @@ namespace ChatWorkPostBot
                 postData = await GetPostData();
                 
                 lastFetchTime = now;
-
-                Console.WriteLine("Fetch post trigger data.\n");
             }
 
             if (postData == null){ return; }
