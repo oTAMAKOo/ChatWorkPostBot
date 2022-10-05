@@ -87,9 +87,9 @@ namespace ChatWorkPostBot
                 }
                 catch (Exception e)
                 {
-                    await SendMessage(data.roomId, e.ToString(), cancelToken);
-
                     postHistory[dataHash] = now;
+
+                    await SendMessage(data.roomId, e.ToString(), cancelToken);
                 }
             }
 
@@ -102,9 +102,9 @@ namespace ChatWorkPostBot
 
             var client = new ChatworkClient(data.roomId, setting.ChatworkApiKey);
 
-            await client.SendMessage(data.message, cancelToken);
-
             postHistory[dataHash] = now;
+
+            await client.SendMessage(data.message, cancelToken);
 
             var json = JsonConvert.SerializeObject(data, Formatting.Indented);
 
