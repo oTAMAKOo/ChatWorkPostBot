@@ -19,6 +19,8 @@ namespace ChatWorkPostBot
 
         // 休日一覧.
         private Dictionary<DateTime, string> holidays = null;
+        // 投稿中.
+        private List<int> posting = null;
         // 最終投稿時間.
         private Dictionary<int, DateTime?> postHistory = null;
         // 投稿データ.
@@ -34,6 +36,7 @@ namespace ChatWorkPostBot
 
         public async Task Initialize()
         {
+            posting = new List<int>();
             postHistory = new Dictionary<int, DateTime?>();
 
             // 休日情報取得.
@@ -102,9 +105,13 @@ namespace ChatWorkPostBot
 
             var client = new ChatworkClient(data.roomId, setting.ChatworkApiKey);
 
+            posting.Add(dataHash);
+
             postHistory[dataHash] = now;
 
             await client.SendMessage(data.message, cancelToken);
+
+            posting.Remove(dataHash);
 
             var json = JsonConvert.SerializeObject(data, Formatting.Indented);
 
@@ -122,6 +129,9 @@ namespace ChatWorkPostBot
 
         private bool CheckPostTime(DateTime now, PostData data, int dataHash)
         {
+            // 投稿中は処理しない.
+            if (posting.Contains(dataHash)){ return false; }
+
             // 祝日判定.
 
             if (!data.postHoliday)
