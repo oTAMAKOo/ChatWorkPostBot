@@ -2,6 +2,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Extensions;
@@ -13,16 +15,16 @@ namespace ChatWorkPostBot
     {
         //----- params -----
 
-        private const int PostDataFetchInterval = 5;
+        private const int PostDataFetchInterval = 30;
 
         //----- field -----
 
         // 休日一覧.
         private Dictionary<DateTime, string> holidays = null;
         // 投稿中.
-        private List<int> posting = null;
+        private List<string> posting = null;
         // 最終投稿時間.
-        private Dictionary<int, DateTime?> postHistory = null;
+        private Dictionary<string, DateTime?> postHistory = null;
         // 投稿データ.
         private PostData[] postData = null;
         // 最終投稿データ取得時間.
@@ -36,8 +38,8 @@ namespace ChatWorkPostBot
 
         public async Task Initialize()
         {
-            posting = new List<int>();
-            postHistory = new Dictionary<int, DateTime?>();
+            posting = new List<string>();
+            postHistory = new Dictionary<string, DateTime?>();
 
             // 休日情報取得.
             
@@ -76,21 +78,19 @@ namespace ChatWorkPostBot
 
             foreach (var data in postData)
             {
-                var dataHash = data.GetHashCode();
-
                 if (string.IsNullOrEmpty(data.roomId)){ continue; }
 
                 try
                 {
-                    if (!CheckPostTime(now, data, dataHash)){ continue; }
+                    if (!CheckPostTime(now, data, data.hash)){ continue; }
 
-                    var task = PostMessage(now, data, dataHash, cancelToken);
+                    var task = PostMessage(now, data, data.hash, cancelToken);
 
                     tasks.Add(task);
                 }
                 catch (Exception e)
                 {
-                    postHistory[dataHash] = now;
+                    postHistory[data.hash] = now;
 
                     await SendMessage(data.roomId, e.ToString(), cancelToken);
                 }
@@ -99,7 +99,7 @@ namespace ChatWorkPostBot
             await Task.WhenAll(tasks);
         }
 
-        private async Task PostMessage(DateTime now, PostData data, int dataHash, CancellationToken cancelToken)
+        private async Task PostMessage(DateTime now, PostData data, string dataHash, CancellationToken cancelToken)
         {
             var setting = Setting.Instance;
 
@@ -115,7 +115,7 @@ namespace ChatWorkPostBot
 
             var json = JsonConvert.SerializeObject(data, Formatting.Indented);
 
-            Console.WriteLine($"Post:\n{json}\n");
+            Console.WriteLine($"Post : {dataHash}\n{json}\n");
         }
 
         private async Task SendMessage(string roomId, string message, CancellationToken cancelToken)
@@ -127,7 +127,7 @@ namespace ChatWorkPostBot
             await client.SendMessage(message, cancelToken);
         }
 
-        private bool CheckPostTime(DateTime now, PostData data, int dataHash)
+        private bool CheckPostTime(DateTime now, PostData data, string dataHash)
         {
             // 投稿中は処理しない.
             if (posting.Contains(dataHash)){ return false; }
@@ -204,6 +204,12 @@ namespace ChatWorkPostBot
                         postHoliday = postHolidayValue,
                     };
 
+                    var json = JsonConvert.SerializeObject(postData, Formatting.None);
+
+                    var hash = CalcSHA256(json, Encoding.UTF8);
+
+                    postData.hash = hash;
+
                     list.Add(postData);
                 }
                 catch (Exception e)
@@ -213,6 +219,25 @@ namespace ChatWorkPostBot
             }
 
             return list.ToArray();
+        }
+
+        // SHA256ハッシュ生成.
+        private static string CalcSHA256(string value, Encoding enc)
+        {
+            var byteValues = enc.GetBytes(value);
+
+            var crypt256 = new SHA256CryptoServiceProvider();
+
+            var hash256Value = crypt256.ComputeHash(byteValues);
+            
+            var hashedText = new StringBuilder();
+
+            for (var i = 0; i < hash256Value.Length; i++)
+            {
+                hashedText.AppendFormat("{0:x2}", hash256Value[i]);
+            }
+
+            return hashedText.ToString();
         }
 
         private T GetValue<T>(IList<object> list, string column)

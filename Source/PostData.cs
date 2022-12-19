@@ -6,6 +6,8 @@ namespace ChatWorkPostBot
     [Serializable]
     public sealed class PostData
     {
+        public string hash;
+
         public string roomId;
             
         public string message;
