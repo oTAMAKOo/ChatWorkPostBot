@@ -15,7 +15,7 @@ namespace ChatWorkPostBot
     {
         //----- params -----
 
-        private const int PostDataFetchInterval = 30;
+        private const int PostDataFetchInterval = 5;
 
         //----- field -----
 
